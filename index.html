@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Voter Information Slip</title>
+
+<style>
+/* ================= SCREEN BACKGROUND ================= */
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+  background-image: url("laptop.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+@media (max-width: 768px) {
+  body {
+    background-image: url("mobile.png");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+}
+
+/* ================= HOME CONTAINER ================= */
+.container {
+  max-width: 360px;
+  background: #fff;
+  border: 1px solid #000;
+  padding: 10px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+h3 {
+  text-align: center;
+  margin: 6px 0 10px;
+}
+
+select, input, button {
+  width: 100%;
+  padding: 6px;
+  margin: 4px 0;
+  font-size: 14px;
+}
+
+.result-card {
+  border-top: 1px dashed #000;
+  margin-top: 8px;
+  padding-top: 6px;
+}
+
+.footer {
+  font-size: 9px;
+  text-align: center;
+  margin-top: 6px;
+}
+
+/* ================= PRINT RESULT – 58MM PERFECT ================= */
+@media print {
+
+  @page {
+    size: 58mm 125mm; /* 5 inches */
+    margin: 0;
+  }
+
+  html, body {
+    width: 58mm;
+    height: 125mm;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    position: static !important;
+    transform: none !important;
+    overflow: hidden !important;
+    font-family: "Courier New", Courier, monospace;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+
+  .print-area {
+    width: 48mm;
+    height: 125mm;
+    margin: 0 auto;
+    padding: 0;
+    box-sizing: border-box;
+    font-size: 14px;
+    line-height: 1.7;
+    font-weight: 800;
+    page-break-inside: avoid;
+  }
+
+  .divider {
+    border-top: 1px dashed #000;
+    margin: 2mm 0;
+  }
+
+  .print-row {
+    margin-bottom: 1.8mm;
+  }
+
+  .print-label {
+    font-weight: 900;
+    display: inline;
+  }
+
+  .print-value {
+    display: inline;
+    font-weight: 800;
+    word-break: break-word;
+  }
+
+  button,
+  select,
+  input,
+  h3,
+  .footer,
+  .select-box {
+    display: none !important;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <h3>Voter Information Slip</h3>
+
+  <select id="searchType">
+    <option value="epic_no">Search by EPIC No</option>
+    <option value="name">Search by Name</option>
+    <option value="house_No">Search by House No</option>
+    <option value="mobile_no">Search by Mobile No</option>
+  </select>
+
+  <input id="search" placeholder="Enter value">
+  <button onclick="findVoters()">Search</button>
+  <button onclick="printSelected()">Print Selected</button>
+
+  <div id="results"></div>
+
+  <div class="footer">
+    This is NOT an official voter slip. Please carry valid ID.
+  </div>
+</div>
+
+<script>
+let voters = [];
+
+fetch("https://opensheet.elk.sh/1xfIMsplZ_b4X4VI6D0AKUK5sQnVPRPFFgOhgJZUgAMc/Sheet1!A1:Z")
+  .then(res => res.json())
+  .then(data => voters = data);
+
+function normalize(val) {
+  return String(val || "").trim().toUpperCase().replace(/\s+/g, "");
+}
+
+function relationText(v) {
+  return v.relation_name || "";
+}
+
+function findVoters() {
+  const type = document.getElementById("searchType").value;
+  const input = normalize(document.getElementById("search").value);
+  const resultsDiv = document.getElementById("results");
+  resultsDiv.innerHTML = "";
+
+  const matches = voters.filter(v => normalize(v[type]) === input);
+
+  if (!matches.length) {
+    resultsDiv.innerHTML = "<b>No record found</b>";
+    return;
+  }
+
+  matches.forEach(v => {
+    const card = document.createElement("div");
+    card.className = "result-card print-area";
+    card.innerHTML = `
+      <div class="select-box">
+        <input type="checkbox" class="select-slip"> Select
+      </div>
+
+      <div class="print-row"><span class="print-label">District :</span> <span class="print-value">Karimnagar</span></div>
+      <div class="print-row"><span class="print-label">Municipality :</span> <span class="print-value">Karimnagar MC</span></div>
+      <div class="print-row"><span class="print-label">Ward No :</span> <span class="print-value">52</span></div>
+      <div class="print-row"><span class="print-label">PS No :</span> <span class="print-value">${v.ps_no || "377"}</span></div>
+
+      <div class="divider"></div>
+
+      <div class="print-row"><span class="print-label">Voter ID :</span> <span class="print-value">${v.epic_no || ""}</span></div>
+      <div class="print-row"><span class="print-label">Name :</span> <span class="print-value">${v.name || ""}</span></div>
+      <div class="print-row"><span class="print-label">Father/Husband :</span> <span class="print-value">${relationText(v)}</span></div>
+      <div class="print-row"><span class="print-label">Door No :</span> <span class="print-value">${v.house_No || ""}</span></div>
+      <div class="print-row"><span class="print-label">Serial No :</span> <span class="print-value">${v.serial_no || ""}</span></div>
+      <div class="print-row"><span class="print-label">Age / Gender :</span> <span class="print-value">${v.age || ""} / ${v.gender || ""}</span></div>
+
+      <div class="divider"></div>
+
+      <div class="print-row"><span class="print-label">PS Location :</span></div>
+      <div class="print-row"><span class="print-value">Trinity Jnr College for Girls<br>Christian Colony, Room-2</span></div>
+
+      <button onclick="printOne(this)">Print This Slip</button>
+    `;
+    resultsDiv.appendChild(card);
+  });
+}
+
+function printOne(btn) {
+  document.querySelectorAll(".print-area").forEach(el => el.style.display = "none");
+  btn.parentElement.style.display = "block";
+  window.print();
+  location.reload();
+}
+
+function printSelected() {
+  document.querySelectorAll(".print-area").forEach(card => {
+    const chk = card.querySelector(".select-slip");
+    card.style.display = chk && chk.checked ? "block" : "none";
+  });
+  window.print();
+  location.reload();
+}
+</script>
+
+</body>
+</html>
